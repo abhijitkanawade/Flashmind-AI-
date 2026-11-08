@@ -1,0 +1,230 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#090b16">
+<title>FlashMind AI</title>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:Arial,sans-serif;
+  background:#090b16;
+  color:#f5f5ff;
+  min-height:100vh;
+}
+.app{
+  max-width:850px;
+  margin:auto;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  padding:18px;
+}
+header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:12px 4px 20px;
+  border-bottom:1px solid #24283a;
+}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{
+  width:43px;height:43px;border-radius:15px;
+  background:linear-gradient(135deg,#8055ff,#20c8e8);
+  display:grid;place-items:center;
+  font-size:23px;font-weight:bold;
+}
+.brand h2{font-size:19px}
+.brand p{font-size:11px;color:#9b9db4;margin-top:4px}
+.status{
+  font-size:11px;color:#70e5b3;
+  background:#102c29;padding:8px 11px;border-radius:20px;
+}
+.welcome{text-align:center;margin:65px 0 35px}
+.welcome .brain{font-size:48px;margin-bottom:15px}
+.welcome h1{
+  font-size:clamp(28px,7vw,42px);
+  background:linear-gradient(90deg,#a98aff,#50d7ef);
+  background-clip:text;-webkit-background-clip:text;
+  color:transparent;
+}
+.welcome p{color:#999cb2;font-size:14px;margin-top:12px}
+.suggestions{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:10px;margin-bottom:22px;
+}
+.suggestion{
+  border:1px solid #292d43;background:#111527;
+  color:#dfe1f5;border-radius:15px;padding:15px;
+  text-align:left;font-size:13px;cursor:pointer;
+}
+.suggestion:active{background:#252044}
+.suggestion span{display:block;font-size:20px;margin-bottom:8px}
+#chat{
+  display:flex;flex-direction:column;gap:15px;
+  flex:1;padding:10px 0 25px;
+}
+.message{
+  max-width:88%;padding:13px 15px;
+  border-radius:17px;font-size:14px;
+  line-height:1.6;white-space:pre-wrap;
+  overflow-wrap:anywhere;
+}
+.user{
+  align-self:flex-end;
+  background:linear-gradient(135deg,#6548cb,#4358b9);
+  border-bottom-right-radius:5px;
+}
+.bot{
+  align-self:flex-start;
+  background:#171b2d;border:1px solid #292e44;
+  border-bottom-left-radius:5px;
+}
+.bot-label{font-size:10px;color:#8f9bff;margin-bottom:5px}
+.typing{color:#9ba2c0;font-style:italic}
+.composer{
+  position:sticky;bottom:0;
+  background:#090b16;padding:12px 0 5px;
+}
+.inputbox{
+  display:flex;align-items:center;gap:8px;
+  background:#171b2c;border:1px solid #343950;
+  border-radius:18px;padding:8px 9px 8px 15px;
+}
+input{
+  flex:1;min-width:0;background:transparent;
+  border:none;outline:none;color:white;
+  font-size:14px;padding:10px 0;
+}
+input::placeholder{color:#8589a2}
+button{font-family:inherit}
+#send{
+  border:0;border-radius:13px;
+  background:linear-gradient(135deg,#8257ff,#397fe9);
+  color:white;width:43px;height:43px;
+  font-size:20px;cursor:pointer;
+}
+#send:disabled{opacity:.5}
+.note{text-align:center;color:#777d97;font-size:10px;margin-top:12px}
+.clear{
+  border:1px solid #343950;background:#171b2c;
+  color:#bbbde0;border-radius:10px;
+  padding:8px 11px;font-size:11px;cursor:pointer;
+}
+@media(max-width:450px){
+ .app{padding:13px}
+ .welcome{margin:48px 0 30px}
+ .message{max-width:94%}
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+
+<header>
+  <div class="brand">
+    <div class="logo">✦</div>
+    <div>
+      <h2>FlashMind AI</h2>
+      <p>Think faster. Learn smarter.</p>
+    </div>
+  </div>
+  <button class="clear" onclick="clearChat()">New Chat</button>
+</header>
+
+<section class="welcome" id="welcome">
+  <div class="brain">✧</div>
+  <h1>What can I help with?</h1>
+  <p>Your intelligent assistant starts here.</p>
+</section>
+
+<section class="suggestions" id="suggestions">
+  <button class="suggestion" onclick="suggest('Explain artificial intelligence simply')">
+    <span>🧠</span>Learn something
+  </button>
+  <button class="suggestion" onclick="suggest('Help me write a professional email')">
+    <span>✍️</span>Write anything
+  </button>
+  <button class="suggestion" onclick="suggest('Explain JavaScript for beginners')">
+    <span>💻</span>Learn coding
+  </button>
+  <button class="suggestion" onclick="suggest('Give me a study plan')">
+    <span>📚</span>Study smarter
+  </button>
+</section>
+
+<main id="chat"></main>
+
+<div class="composer">
+  <div class="inputbox">
+    <input id="prompt" type="text"
+      placeholder="Ask FlashMind anything..."
+      autocomplete="off">
+    <button id="send" onclick="sendMessage()">↑</button>
+  </div>
+  <p class="note">FlashMind AI · First UI Demo · AI connection coming next</p>
+</div>
+
+</div>
+
+<script>
+const input=document.getElementById("prompt");
+const chat=document.getElementById("chat");
+
+function addMessage(text,type){
+  const box=document.createElement("div");
+  box.className="message "+type;
+
+  if(type==="bot"){
+    const label=document.createElement("div");
+    label.className="bot-label";
+    label.textContent="✦ FLASHMIND AI";
+    box.appendChild(label);
+  }
+
+  const content=document.createElement("div");
+  content.textContent=text;
+  box.appendChild(content);
+  chat.appendChild(box);
+
+  window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});
+}
+
+function sendMessage(){
+  const text=input.value.trim();
+  if(!text)return;
+
+  document.getElementById("welcome").style.display="none";
+  document.getElementById("suggestions").style.display="none";
+
+  addMessage(text,"user");
+  input.value="";
+
+  const loading=document.createElement("div");
+  loading.className="message bot typing";
+  loading.textContent="FlashMind AI interface is working! AI engine is not connected yet. We will connect the real AI API in the next step.";
+  chat.appendChild(loading);
+}
+
+function suggest(text){
+  input.value=text;
+  sendMessage();
+}
+
+function clearChat(){
+  chat.innerHTML="";
+  document.getElementById("welcome").style.display="block";
+  document.getElementById("suggestions").style.display="grid";
+}
+
+input.addEventListener("keydown",function(e){
+  if(e.key==="Enter")sendMessage();
+});
+</script>
+</body>
+</html>
+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
