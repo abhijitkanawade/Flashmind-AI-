@@ -484,16 +484,16 @@ async function sendMessage() {
     loading.remove();
 
     if (!response.ok || data.error) {
-      addMessage("⚠️ " + (data.error || "AI कडून उत्तर मिळण्यात अडचण आली."), "bot");
+      addMessage("⚠️ " + (data.error || "Failed to get response from AI."), "bot");
     } else {
-      const reply = data.reply || "माफ करा, उत्तर मिळाले नाही.";
+      const reply = data.reply || "Sorry, no response received.";
       addMessage(reply, "bot", true);
       conversation.push({ role: "assistant", content: reply });
       saveCurrentSession();
     }
   } catch (err) {
     loading.remove();
-    addMessage("⚠️ नेटवर्क एरर: कृपया तुमचे इंटरनेट तपासा.", "bot");
+    addMessage("⚠️ Network error: Please check your internet connection.", "bot");
   } finally {
     if(sendBtn) sendBtn.disabled = false;
   }
@@ -513,62 +513,5 @@ function clearChat() {
 
 function saveCurrentSession() {
   if (conversation.length === 0) return;
-  const title = conversation[0].content.slice(0, 36) + (conversation[0].content.length > 36 ? "..." : "");
-  const existingIndex = savedSessions.findIndex(s => s.title === title);
-  const sessionObj = { title, messages: [...conversation], time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) };
-
-  if (existingIndex >= 0) {
-    savedSessions[existingIndex] = sessionObj;
-  } else {
-    savedSessions.unshift(sessionObj);
-  }
-  savedSessions = savedSessions.slice(0, 10);
-  localStorage.setItem("flashmind_sessions", JSON.stringify(savedSessions));
-  renderHistory();
-}
-
-function renderHistory() {
-  historyList.innerHTML = "";
-  if (savedSessions.length === 0) {
-    historyList.innerHTML = `<div style="font-size:12px;color:#8f96b8;padding:6px;">अजून कोणतीही चॅट हिस्ट्री नाही.</div>`;
-    return;
-  }
-  savedSessions.forEach((session, idx) => {
-    const item = document.createElement("div");
-    item.className = "history-item";
-    item.innerHTML = `<span>💬 ${session.title}</span><span style="color:#8f96b8;font-size:10px">${session.time || ""}</span>`;
-    item.onclick = () => loadSession(idx);
-    historyList.appendChild(item);
-  });
-}
-
-function loadSession(idx) {
-  const session = savedSessions[idx];
-  if (!session) return;
-  chat.innerHTML = "";
-  document.getElementById("welcome").style.display = "none";
-  document.getElementById("suggestions").style.display = "none";
-  conversation = [...session.messages];
-  conversation.forEach(m => {
-    addMessage(m.content, m.role === "user" ? "user" : "bot", false);
-  });
-  historyPanel.classList.remove("open");
-}
-
-function toggleHistory() {
-  renderHistory();
-  historyPanel.classList.toggle("open");
-}
-
-function clearAllHistory() {
-  savedSessions = [];
-  localStorage.removeItem("flashmind_sessions");
-  renderHistory();
-}
-
-input.addEventListener("keydown", function(e) {
-  if (e.key === "Enter") sendMessage();
-});
-</script>
-</body>
-</html>
+  const title =
+    
