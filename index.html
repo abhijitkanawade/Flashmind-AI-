@@ -2,349 +2,165 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#070913">
 <title>FlashMind AI</title>
 
 <style>
 :root {
-  --glass-bg: rgba(22, 27, 48, 0.55);
-  --glass-border: rgba(255, 255, 255, 0.14);
-  --glass-highlight: rgba(255, 255, 255, 0.08);
+  --glass-bg: rgba(22,27,48,.65);
+  --glass-border: rgba(255,255,255,.14);
   --accent-1: #8a5cff;
   --accent-2: #24d2f2;
   --text-main: #f5f7ff;
   --text-muted: #9ba1be;
 }
-
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  -webkit-tap-highlight-color: transparent;
-}
-
+* { box-sizing:border-box; margin:0; padding:0; }
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background-color: #070913;
-  background-image: 
-    radial-gradient(circle at 15% 15%, rgba(138, 92, 255, 0.22), transparent 42%),
-    radial-gradient(circle at 85% 25%, rgba(36, 210, 242, 0.18), transparent 40%),
-    radial-gradient(circle at 50% 85%, rgba(98, 70, 234, 0.16), transparent 45%);
-  background-attachment: fixed;
-  color: var(--text-main);
-  min-height: 100vh;
-  overflow-x: hidden;
+  font-family:system-ui,-apple-system,sans-serif;
+  background:
+    radial-gradient(circle at 15% 15%,rgba(138,92,255,.22),transparent 42%),
+    radial-gradient(circle at 85% 25%,rgba(36,210,242,.18),transparent 40%),
+    #070913;
+  background-attachment:fixed;
+  color:var(--text-main);
+  min-height:100vh;
 }
-
 .app {
-  max-width: 850px;
-  margin: auto;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  padding: 14px;
+  max-width:850px; margin:auto; min-height:100vh;
+  display:flex; flex-direction:column; padding:14px;
 }
-
 header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  background: var(--glass-bg);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid var(--glass-border);
-  border-radius: 22px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  position: sticky;
-  top: 10px;
-  z-index: 20;
+  display:flex; align-items:center; justify-content:space-between;
+  gap:8px; padding:12px;
+  background:var(--glass-bg); backdrop-filter:blur(24px);
+  border:1px solid var(--glass-border); border-radius:22px;
+  position:sticky; top:8px; z-index:20;
 }
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
+.brand { display:flex; align-items:center; gap:10px; }
 .logo {
-  width: 42px;
-  height: 42px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
-  display: grid;
-  place-items: center;
-  font-size: 22px;
-  font-weight: bold;
-  box-shadow: 0 4px 16px rgba(138, 92, 255, 0.45);
+  width:42px; height:42px; border-radius:14px;
+  display:grid; place-items:center; font-size:22px;
+  background:linear-gradient(135deg,var(--accent-1),var(--accent-2));
 }
-
-.brand h2 {
-  font-size: 18px;
-  font-weight: 700;
+.brand h2 { font-size:17px; }
+.brand p { font-size:10px; color:var(--text-muted); }
+.header-actions { display:flex; gap:6px; }
+button {
+  cursor:pointer; color:white;
+  font-family:inherit;
 }
-
-.brand p {
-  font-size: 11px;
-  color: var(--text-muted);
-  margin-top: 2px;
+.icon-btn,.clear {
+  border:1px solid var(--glass-border);
+  background:rgba(255,255,255,.07);
+  border-radius:12px; padding:9px 10px; font-size:11px;
 }
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.icon-btn, .clear {
-  border: 1px solid var(--glass-border);
-  background: rgba(255, 255, 255, 0.06);
-  color: #e2e5ff;
-  border-radius: 13px;
-  padding: 8px 12px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  backdrop-filter: blur(12px);
-  transition: all 0.2s ease;
-}
-
-.icon-btn:active, .clear:active {
-  transform: scale(0.95);
-  background: rgba(255, 255, 255, 0.14);
-}
-
+button:disabled { opacity:.5; cursor:not-allowed; }
 .history-panel {
-  display: none;
-  margin-top: 10px;
-  padding: 14px;
-  background: rgba(18, 22, 40, 0.78);
-  backdrop-filter: blur(26px);
-  -webkit-backdrop-filter: blur(26px);
-  border: 1px solid var(--glass-border);
-  border-radius: 20px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  display:none; margin-top:10px; padding:14px;
+  background:rgba(18,22,40,.9);
+  border:1px solid var(--glass-border); border-radius:18px;
 }
-
-.history-panel.open {
-  display: block;
-}
-
+.history-panel.open { display:block; }
 .history-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-  font-size: 12px;
-  color: var(--text-muted);
+  display:flex; justify-content:space-between;
+  font-size:12px; color:var(--text-muted); margin-bottom:12px;
 }
-
 .history-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 180px;
-  overflow-y: auto;
+  display:flex; flex-direction:column; gap:8px;
+  max-height:220px; overflow:auto;
 }
-
 .history-item {
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  font-size: 12px;
-  color: #dfe3ff;
-  cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  width:100%; text-align:left; padding:12px;
+  border:1px solid var(--glass-border);
+  border-radius:12px; background:rgba(255,255,255,.06);
+  font-size:12px;
 }
-
-.welcome {
-  text-align: center;
-  margin: 48px 0 28px;
+.history-item.active { border-color:var(--accent-2); }
+.welcome { text-align:center; margin:48px 0 28px; }
+.brain {
+  width:68px; height:68px; margin:0 auto 16px;
+  display:grid; place-items:center; border-radius:22px;
+  background:rgba(255,255,255,.07); font-size:34px;
 }
-
-.welcome .brain {
-  width: 68px;
-  height: 68px;
-  margin: 0 auto 16px;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(16px);
-  display: grid;
-  place-items: center;
-  font-size: 34px;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
-}
-
 .welcome h1 {
-  font-size: clamp(26px, 6.5vw, 40px);
-  font-weight: 800;
-  background: linear-gradient(90deg, #c4b0ff, #6be5ff);
-  background-clip: text;
-  -webkit-background-clip: text;
-  color: transparent;
+  font-size:clamp(26px,6vw,40px);
+  background:linear-gradient(90deg,#c4b0ff,#6be5ff);
+  background-clip:text; color:transparent;
 }
-
-.welcome p {
-  color: var(--text-muted);
-  font-size: 14px;
-  margin-top: 10px;
-}
-
+.welcome p { color:var(--text-muted); font-size:13px; margin-top:10px; }
 .suggestions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 22px;
+  display:grid; grid-template-columns:1fr 1fr;
+  gap:12px; margin-bottom:22px;
 }
-
 .suggestion {
-  border: 1px solid var(--glass-border);
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  color: #e8eaff;
-  border-radius: 18px;
-  padding: 15px;
-  text-align: left;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+  text-align:left; padding:15px; border-radius:18px;
+  border:1px solid var(--glass-border);
+  background:var(--glass-bg); font-size:13px;
 }
-
-.suggestion span {
-  display: block;
-  font-size: 21px;
-  margin-bottom: 8px;
-}
-
+.suggestion span { display:block; font-size:21px; margin-bottom:8px; }
 #chat {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  flex: 1;
-  padding: 12px 0 24px;
+  display:flex; flex-direction:column; gap:14px;
+  flex:1; padding:12px 0 24px;
 }
-
 .message {
-  max-width: 88%;
-  padding: 14px 16px;
-  border-radius: 20px;
-  font-size: 14px;
-  line-height: 1.6;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
+  max-width:88%; padding:14px 16px;
+  border-radius:20px; font-size:14px;
+  line-height:1.6; white-space:pre-wrap;
+  overflow-wrap:anywhere;
 }
-
 .user {
-  align-self: flex-end;
-  background: linear-gradient(135deg, rgba(138, 92, 255, 0.9), rgba(58, 123, 213, 0.9));
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-bottom-right-radius: 6px;
+  align-self:flex-end;
+  background:linear-gradient(135deg,rgba(138,92,255,.9),rgba(58,123,213,.9));
+  border-bottom-right-radius:6px;
 }
-
 .bot {
-  align-self: flex-start;
-  background: var(--glass-bg);
-  backdrop-filter: blur(22px);
-  -webkit-backdrop-filter: blur(22px);
-  border: 1px solid var(--glass-border);
-  border-bottom-left-radius: 6px;
+  align-self:flex-start; background:var(--glass-bg);
+  border:1px solid var(--glass-border);
+  border-bottom-left-radius:6px;
 }
-
 .bot-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.8px;
-  color: #9da8ff;
-  margin-bottom: 6px;
+  font-size:10px; font-weight:bold;
+  color:#9da8ff; margin-bottom:6px;
 }
-
-.typing-dots {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 2px;
-}
-
+.typing-dots { display:flex; gap:5px; padding:5px; }
 .typing-dots span {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #a5b0ff;
-  animation: pulseDot 1.3s infinite ease-in-out;
+  width:7px; height:7px; border-radius:50%;
+  background:#a5b0ff; animation:pulse 1s infinite;
 }
-
-.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
-.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
-
+.typing-dots span:nth-child(2) { animation-delay:.2s; }
+.typing-dots span:nth-child(3) { animation-delay:.4s; }
 .composer {
-  position: sticky;
-  bottom: 8px;
-  padding: 8px 0 4px;
-  z-index: 20;
+  position:sticky; bottom:5px; padding:8px 0;
+  background:linear-gradient(transparent,rgba(7,9,19,.9));
 }
-
 .inputbox {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: rgba(22, 27, 48, 0.72);
-  backdrop-filter: blur(25px);
-  -webkit-backdrop-filter: blur(25px);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 22px;
-  padding: 8px 10px 8px 16px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  display:flex; align-items:center; gap:10px;
+  background:rgba(22,27,48,.9);
+  border:1px solid var(--glass-border);
+  border-radius:22px; padding:8px 10px 8px 16px;
 }
-
 input {
-  flex: 1;
-  min-width: 0;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: white;
-  font-size: 14px;
-  padding: 10px 0;
+  flex:1; min-width:0; background:transparent;
+  border:0; outline:0; color:white;
+  font-size:14px; padding:12px 0;
 }
-
-input::placeholder {
-  color: #8f96b8;
-}
-
+input::placeholder { color:#8f96b8; }
 #send {
-  border: 0;
-  border-radius: 15px;
-  background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
-  color: white;
-  width: 42px;
-  height: 42px;
-  font-size: 19px;
-  font-weight: bold;
-  cursor: pointer;
-  box-shadow: 0 4px 14px rgba(138, 92, 255, 0.4);
+  width:44px; height:44px; border:0;
+  border-radius:15px;
+  background:linear-gradient(135deg,var(--accent-1),var(--accent-2));
+  font-size:20px;
 }
-
-#send:active {
-  transform: scale(0.92);
+.note { text-align:center; color:#7c82a2; font-size:10px; margin-top:9px; }
+@keyframes pulse {
+  0%,80%,100% { transform:scale(.7); opacity:.4; }
+  40% { transform:scale(1.15); opacity:1; }
 }
-
-.note {
-  text-align: center;
-  color: #7c82a2;
-  font-size: 10px;
-  margin-top: 9px;
-}
-
-@keyframes pulseDot {
-  0%, 80%, 100% { transform: scale(0.7); opacity: 0.45; }
-  40% { transform: scale(1.15); opacity: 1; }
+@media(max-width:380px) {
+  .brand h2 { font-size:14px; }
+  .icon-btn,.clear { padding:8px 7px; font-size:10px; }
+  .suggestions { gap:8px; }
 }
 </style>
 </head>
@@ -369,7 +185,7 @@ input::placeholder {
 <div class="history-panel" id="historyPanel">
   <div class="history-header">
     <span>Recent Conversations</span>
-    <span style="cursor:pointer;color:#ff8f9c" onclick="clearAllHistory()">Clear All</span>
+    <button onclick="clearAllHistory()" style="background:none;border:0;color:#ff8f9c">Clear All</button>
   </div>
   <div class="history-list" id="historyList"></div>
 </div>
@@ -381,27 +197,17 @@ input::placeholder {
 </section>
 
 <section class="suggestions" id="suggestions">
-  <button class="suggestion" onclick="suggest('Explain artificial intelligence simply')">
-    <span>🧠</span>Learn something
-  </button>
-  <button class="suggestion" onclick="suggest('Help me write a professional email')">
-    <span>✍️</span>Write anything
-  </button>
-  <button class="suggestion" onclick="suggest('Explain JavaScript for beginners')">
-    <span>💻</span>Learn coding
-  </button>
-  <button class="suggestion" onclick="suggest('Give me a study plan')">
-    <span>📚</span>Study smarter
-  </button>
+  <button class="suggestion" onclick="suggest('Explain artificial intelligence simply')"><span>🧠</span>Learn something</button>
+  <button class="suggestion" onclick="suggest('Help me write a professional email')"><span>✍️</span>Write anything</button>
+  <button class="suggestion" onclick="suggest('Explain JavaScript for beginners')"><span>💻</span>Learn coding</button>
+  <button class="suggestion" onclick="suggest('Give me a study plan')"><span>📚</span>Study smarter</button>
 </section>
 
 <main id="chat"></main>
 
 <div class="composer">
   <div class="inputbox">
-    <input id="prompt" type="text"
-      placeholder="Ask FlashMind anything..."
-      autocomplete="off">
+    <input id="prompt" type="text" placeholder="Ask FlashMind anything..." autocomplete="off">
     <button id="send" onclick="sendMessage()">↑</button>
   </div>
   <p class="note">FlashMind AI · Spatial UI · Connected & Secure</p>
@@ -417,9 +223,31 @@ const historyPanel = document.getElementById("historyPanel");
 const historyList = document.getElementById("historyList");
 
 let conversation = [];
-let savedSessions = JSON.parse(localStorage.getItem("flashmind_sessions") || "[]");
+let currentSessionId = null;
+let isSending = false;
 
-function addMessage(text, type, animateType = false) {
+function readSessions() {
+  try {
+    const data = JSON.parse(localStorage.getItem("flashmind_sessions") || "[]");
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
+let savedSessions = readSessions();
+
+function persistSessions() {
+  try {
+    localStorage.setItem("flashmind_sessions", JSON.stringify(savedSessions));
+    return true;
+  } catch (error) {
+    console.error("History storage error:", error);
+    return false;
+  }
+}
+
+function addMessage(text, type, animate = false) {
   const box = document.createElement("div");
   box.className = "message " + type;
 
@@ -434,69 +262,131 @@ function addMessage(text, type, animateType = false) {
   box.appendChild(content);
   chat.appendChild(box);
 
-  if (animateType && type === "bot") {
+  if (animate && type === "bot") {
     let i = 0;
-    const speed = Math.max(6, Math.min(18, Math.floor(800 / Math.max(text.length, 1))));
-    function typeChar() {
+    function typeText() {
       if (i < text.length) {
         content.textContent += text.slice(i, i + 3);
         i += 3;
-        window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
-        setTimeout(typeChar, speed);
+        window.scrollTo(0, document.body.scrollHeight);
+        setTimeout(typeText, 12);
       }
     }
-    typeChar();
+    typeText();
   } else {
     content.textContent = text;
-    window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
   }
+
+  window.scrollTo(0, document.body.scrollHeight);
 }
 
-async function sendMessage() {
-  const text = input.value.trim();
-  if (!text) return;
+function saveCurrentSession() {
+  if (!conversation.length) return;
 
-  document.getElementById("welcome").style.display = "none";
-  document.getElementById("suggestions").style.display = "none";
-
-  addMessage(text, "user");
-  conversation.push({ role: "user", content: text });
-  input.value = "";
-  if(sendBtn) sendBtn.disabled = true;
-
-  const loading = document.createElement("div");
-  loading.className = "message bot";
-  loading.innerHTML = `<div class="bot-label">✦ FLASHMIND AI</div><div class="typing-dots"><span></span><span></span><span></span></div>`;
-  chat.appendChild(loading);
-  window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
-
-  try {
-    const response = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: text,
-        messages: conversation
-      })
-    });
-
-    const data = await response.json();
-    loading.remove();
-
-    if (!response.ok || data.error) {
-      addMessage("⚠️ " + (data.error || "Failed to get response from AI."), "bot");
-    } else {
-      const reply = data.reply || "Sorry, no response received.";
-      addMessage(reply, "bot", true);
-      conversation.push({ role: "assistant", content: reply });
-      saveCurrentSession();
-    }
-  } catch (err) {
-    loading.remove();
-    addMessage("⚠️ Network error: Please check your internet connection.", "bot");
-  } finally {
-    if(sendBtn) sendBtn.disabled = false;
+  if (!currentSessionId) {
+    currentSessionId = String(Date.now());
   }
+
+  const firstMessage = conversation.find(m => m.role === "user");
+  const title = firstMessage
+    ? firstMessage.content.slice(0, 45)
+    : "New Conversation";
+
+  const session = {
+    id: currentSessionId,
+    title,
+    messages: conversation,
+    updatedAt: Date.now()
+  };
+
+  const index = savedSessions.findIndex(s => s.id === currentSessionId);
+
+  if (index >= 0) {
+    savedSessions[index] = session;
+  } else {
+    savedSessions.unshift(session);
+  }
+
+  savedSessions.sort((a, b) => b.updatedAt - a.updatedAt);
+  savedSessions = savedSessions.slice(0, 30);
+
+  persistSessions();
+  renderHistory();
+}
+
+function renderHistory() {
+  historyList.innerHTML = "";
+
+  if (!savedSessions.length) {
+    historyList.textContent = "No saved conversations yet.";
+    return;
+  }
+
+  savedSessions.forEach(session => {
+    const button = document.createElement("button");
+    button.className = "history-item" +
+      (session.id === currentSessionId ? " active" : "");
+    button.textContent = session.title || "Conversation";
+    button.onclick = () => loadSession(session.id);
+    historyList.appendChild(button);
+  });
+}
+
+function loadSession(id) {
+  const session = savedSessions.find(s => s.id === id);
+  if (!session) return;
+
+  currentSessionId = session.id;
+  conversation = Array.isArray(session.messages)
+    ? session.messages.map(m => ({role:m.role,content:m.content}))
+    : [];
+
+  chat.innerHTML = "";
+  conversation.forEach(m => {
+    addMessage(m.content, m.role === "user" ? "user" : "bot");
+  });
+
+  updateWelcome();
+  historyPanel.classList.remove("open");
+  renderHistory();
+}
+
+function updateWelcome() {
+  const empty = conversation.length === 0;
+  document.getElementById("welcome").style.display = empty ? "block" : "none";
+  document.getElementById("suggestions").style.display = empty ? "grid" : "none";
+}
+
+function toggleHistory() {
+  historyPanel.classList.toggle("open");
+  renderHistory();
+}
+
+function clearChat() {
+  if (isSending) return;
+
+  saveCurrentSession();
+  conversation = [];
+  currentSessionId = null;
+  chat.innerHTML = "";
+  input.value = "";
+  updateWelcome();
+  historyPanel.classList.remove("open");
+  renderHistory();
+}
+
+function clearAllHistory() {
+  if (isSending) return;
+  if (!confirm("Delete all saved conversations?")) return;
+
+  savedSessions = [];
+  persistSessions();
+  conversation = [];
+  currentSessionId = null;
+  chat.innerHTML = "";
+  updateWelcome();
+  renderHistory();
+  historyPanel.classList.remove("open");
 }
 
 function suggest(text) {
@@ -504,14 +394,77 @@ function suggest(text) {
   sendMessage();
 }
 
-function clearChat() {
-  chat.innerHTML = "";
-  conversation = [];
-  document.getElementById("welcome").style.display = "block";
-  document.getElementById("suggestions").style.display = "grid";
+async function sendMessage() {
+  if (isSending) return;
+
+  const text = input.value.trim();
+  if (!text) return;
+
+  isSending = true;
+  sendBtn.disabled = true;
+  input.disabled = true;
+
+  document.getElementById("welcome").style.display = "none";
+  document.getElementById("suggestions").style.display = "none";
+
+  addMessage(text, "user");
+  conversation.push({role:"user", content:text});
+  input.value = "";
+
+  saveCurrentSession();
+
+  const loading = document.createElement("div");
+  loading.className = "message bot";
+  loading.innerHTML =
+    '<div class="bot-label">✦ FLASHMIND AI</div><div class="typing-dots"><span></span><span></span><span></span></div>';
+  chat.appendChild(loading);
+
+  try {
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        message:text,
+        messages:conversation
+      })
+    });
+
+    const data = await response.json().catch(() => ({}));
+    loading.remove();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Server error: " + response.status);
+    }
+
+    if (data.error) throw new Error(data.error);
+
+    const reply = data.reply;
+    if (typeof reply !== "string" || !reply.trim()) {
+      throw new Error("AI returned an empty response.");
+    }
+
+    conversation.push({role:"assistant",content:reply});
+    addMessage(reply, "bot", true);
+    saveCurrentSession();
+
+  } catch (error) {
+    loading.remove();
+    addMessage("⚠️ " + error.message, "bot");
+    console.error("FlashMind error:", error);
+  } finally {
+    isSending = false;
+    sendBtn.disabled = false;
+    input.disabled = false;
+    input.focus();
+  }
 }
 
-function saveCurrentSession() {
-  if (conversation.length === 0) return;
-  const title =
-    
+input.addEventListener("keydown", event => {
+  if (event.key === "Enter") sendMessage();
+});
+
+renderHistory();
+updateWelcome();
+</script>
+</body>
+</html>
