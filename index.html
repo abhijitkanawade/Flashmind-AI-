@@ -110,6 +110,13 @@ button:disabled { opacity:.5; cursor:not-allowed; }
   background:rgba(255,255,255,.07); border:1px solid var(--glass-border);
   border-radius:10px; font-size:11px; padding:5px 9px;
 }
+.modes { display:flex; gap:8px; overflow-x:auto; padding:0 4px 8px; scrollbar-width:none; }
+.modes::-webkit-scrollbar { display:none; }
+.mode-chip {
+  flex-shrink:0; padding:7px 12px; border-radius:999px; font-size:12px;
+  border:1px solid var(--glass-border); background:rgba(255,255,255,.06); color:var(--text-muted);
+}
+.mode-chip.active { color:white; border-color:var(--accent-2); background:rgba(36,210,242,.16); }
 .typing-dots { display:flex; gap:5px; padding:5px; }
 .typing-dots span { width:7px; height:7px; border-radius:50%; background:#a5b0ff; animation:pulse 1s infinite; }
 .typing-dots span:nth-child(2) { animation-delay:.2s; }
@@ -285,6 +292,7 @@ button:focus-visible,select:focus-visible { outline:2px solid var(--accent-2); o
 <main id="chat"></main>
 
 <div class="composer">
+  <div class="modes" id="modes" role="radiogroup" aria-label="AI mode"></div>
   <div class="previews" id="previews"></div>
   <div class="inputbox" id="inputbox">
     <button id="attach" title="Attach images" onclick="document.getElementById('file').click()">📎</button>
@@ -311,6 +319,20 @@ const historyList = document.getElementById("historyList");
 const toneEl = document.getElementById("tone");
 const customEl = document.getElementById("custom");
 const modeEl = document.getElementById("mode");
+const modesEl = document.getElementById("modes");
+
+// Chat modes. The value is sent to the server as `persona`.
+const PERSONA_LIST = [
+  { id: "chat", label: "Chat", icon: "✦" },
+  { id: "study", label: "Study", icon: "📘" },
+  { id: "developer", label: "Developer", icon: "💻" },
+  { id: "reasoning", label: "Reasoning", icon: "🧩" },
+  { id: "creative", label: "Creative", icon: "🎨" },
+  { id: "writing", label: "Writing", icon: "✍️" },
+  { id: "translator", label: "Translator", icon: "🌐" },
+  { id: "math", label: "Math", icon: "∑" },
+];
+let persona = "chat";
 
 const MAX_IMAGES = 4;
 const MAX_FULL_PX = 1280;
@@ -349,399 +371,19 @@ function loadSettings() {
     if (s.tone) toneEl.value = s.tone;
     if (s.custom) customEl.value = s.custom;
     if (s.mode) modeEl.value = s.mode;
+    if (PERSONA_LIST.some(p => p.id === s.persona)) persona = s.persona;
   } catch {}
 }
 function saveSettings() {
-  try { localStorage.setItem("flashmind_settings", JSON.stringify({ tone: toneEl.value, custom: customEl.value, mode: modeEl.value })); } catch {}
+  try { localStorage.setItem("flashmind_settings", JSON.stringify({ tone: toneEl.value, custom: customEl.value, mode: modeEl.value, persona })); } catch {}
 }
-toneEl.addEventListener("change", saveSettings);
-modeEl.addEventListener("change", saveSettings);
-customEl.addEventListener("input", saveSettings);
-
-/* ---------- helpers ---------- */
-function toast(msg) {
-  const t = document.getElementById("toast");
-  t.textContent = msg; t.style.display = "block";
-  clearTimeout(toast._t); toast._t = setTimeout(() => t.style.display = "none", 3200);
-}
-function esc(s) {
-  return s.replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
-}
-function inline(t) {
-  return t.replace(/`([^`\n]+)`/g, "<code>$1</code>").replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
-}
-function md(src) {
-  const blocks = [];
-  let t = src.replace(/```[\w-]*\n?([\s\S]*?)(```|$)/g, (m, code) => {
-    blocks.push("<pre><code>" + esc(code.replace(/\n$/, "")) + "</code></pre>");
-    return "\u0000" + (blocks.length - 1) + "\u0000";
-  });
-  t = esc(t);
-  const out = []; let list = null;
-  const close = () => { if (list) { out.push("</" + list + ">"); list = null; } };
-  for (const line of t.split("\n")) {
-    let m;
-    if ((m = line.match(/^\u0000(\d+)\u0000$/))) { close(); out.push(blocks[+m[1]]); }
-    else if ((m = line.match(/^\s*[-*•]\s+(.*)/))) { if (list !== "ul") { close(); out.push("<ul>"); list = "ul"; } out.push("<li>" + inline(m[1]) + "</li>"); }
-    else if ((m = line.match(/^\s*\d+[.)]\s+(.*)/))) { if (list !== "ol") { close(); out.push("<ol>"); list = "ol"; } out.push("<li>" + inline(m[1]) + "</li>"); }
-    else if ((m = line.match(/^#{1,3}\s+(.*)/))) { close(); out.push("<h3>" + inline(m[1]) + "</h3>"); }
-    else if (!line.trim()) { close(); }
-    else { close(); out.push("<p>" + inline(line) + "</p>"); }
-  }
-  close();
-  return out.join("");
-}
-function openLightbox(src) {
-  document.getElementById("lightboxImg").src = src;
-  document.getElementById("lightbox").classList.add("open");
-}
-function scrollDown(smooth) {
-  const top = document.documentElement.scrollHeight;
-  if (smooth) window.scrollTo({ top, behavior: "smooth" });
-  else window.scrollTo(0, top);
-}
-// Only follow the stream while the reader is already near the bottom.
-function nearBottom() {
-  return window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 160;
-}
-
-/* ---------- images ---------- */
-function loadBitmap(file) {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("unreadable")); };
-    img.src = url;
-  });
-}
-function scaleTo(img, maxPx, quality) {
-  const r = Math.min(1, maxPx / Math.max(img.width, img.height));
-  const c = document.createElement("canvas");
-  c.width = Math.max(1, Math.round(img.width * r));
-  c.height = Math.max(1, Math.round(img.height * r));
-  const ctx = c.getContext("2d");
-  ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height);
-  ctx.drawImage(img, 0, 0, c.width, c.height);
-  return c.toDataURL("image/jpeg", quality);
-}
-async function addFiles(files) {
-  const list = Array.from(files).filter(f => f.type.startsWith("image/"));
-  if (!list.length) { if (files.length) toast("Only image files are supported."); return; }
-  for (const f of list) {
-    if (pending.length >= MAX_IMAGES) { toast("Maximum " + MAX_IMAGES + " images per message."); break; }
-    try {
-      const img = await loadBitmap(f);
-      pending.push({ full: scaleTo(img, MAX_FULL_PX, 0.85), thumb: scaleTo(img, MAX_THUMB_PX, 0.7) });
-    } catch { toast("Couldn't read \"" + f.name + "\". Try a JPG or PNG."); }
-  }
-  renderPreviews();
-}
-function renderPreviews() {
-  previewsEl.innerHTML = "";
-  pending.forEach((p, i) => {
-    const d = document.createElement("div"); d.className = "preview";
-    const im = document.createElement("img"); im.src = p.thumb; im.alt = "attachment";
-    const b = document.createElement("button"); b.textContent = "×"; b.title = "Remove";
-    b.onclick = () => { pending.splice(i, 1); renderPreviews(); };
-    d.append(im, b); previewsEl.appendChild(d);
-  });
-}
-fileInput.addEventListener("change", () => { addFiles(fileInput.files); fileInput.value = ""; });
-input.addEventListener("paste", e => {
-  const files = Array.from(e.clipboardData?.files || []).filter(f => f.type.startsWith("image/"));
-  if (files.length) { e.preventDefault(); addFiles(files); }
-});
-// Count enter/leave so the highlight doesn't flicker over child elements.
-let dragDepth = 0;
-document.addEventListener("dragenter", e => { e.preventDefault(); dragDepth++; inputbox.classList.add("drag"); });
-document.addEventListener("dragover", e => e.preventDefault());
-document.addEventListener("dragleave", () => { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) inputbox.classList.remove("drag"); });
-document.addEventListener("drop", e => {
-  e.preventDefault(); dragDepth = 0; inputbox.classList.remove("drag");
-  if (e.dataTransfer?.files?.length) addFiles(e.dataTransfer.files);
-});
-
-/* ---------- rendering messages ---------- */
-function buildMessage(msg) {
-  const box = document.createElement("div");
-  const isBot = msg.role !== "user";
-  box.className = "message " + (isBot ? "bot tilt" : "user");
-
-  if (isBot) {
-    const label = document.createElement("div");
-    label.className = "bot-label"; label.textContent = "FlashMind";
-    box.appendChild(label);
-  } else if (msg.images && msg.images.length) {
-    const wrap = document.createElement("div"); wrap.className = "msg-images";
-    msg.images.forEach(src => {
-      const im = document.createElement("img"); im.src = src; im.alt = "attached image";
-      im.onclick = () => openLightbox(src); wrap.appendChild(im);
-    });
-    box.appendChild(wrap);
-  }
-
-  const content = document.createElement("div");
-  if (isBot) { content.className = "md"; content.innerHTML = md(msg.content); }
-  else content.textContent = msg.content;
-  box.appendChild(content);
-  box._content = content;
-  return box;
-}
-function addActions(box, text) {
-  const bar = document.createElement("div"); bar.className = "actions";
-  const copy = document.createElement("button"); copy.textContent = "Copy";
-  copy.onclick = async () => {
-    try { await navigator.clipboard.writeText(text); copy.textContent = "Copied ✓"; setTimeout(() => copy.textContent = "Copy", 1500); }
-    catch { toast("Couldn't copy."); }
-  };
-  const regen = document.createElement("button"); regen.textContent = "↻ Regenerate";
-  regen.onclick = regenerate;
-  bar.append(copy, regen); box.appendChild(bar);
-}
-function refreshRegenButtons() {
-  chat.querySelectorAll(".actions button:nth-child(2)").forEach(b => b.style.display = "none");
-  const last = chat.querySelector(".bot:last-child .actions button:nth-child(2)");
-  if (last) last.style.display = "";
-}
-function renderAll() {
-  chat.innerHTML = "";
-  conversation.forEach(m => {
-    const box = buildMessage(m);
-    if (m.role !== "user") addActions(box, m.content);
-    chat.appendChild(box);
-  });
-  refreshRegenButtons(); updateWelcome(); scrollDown();
-}
-
-/* ---------- sessions ---------- */
-function saveCurrentSession() {
-  if (!conversation.length) return;
-  if (!currentSessionId) currentSessionId = String(Date.now());
-  const first = conversation.find(m => m.role === "user");
-  const title = (first && (first.content || (first.images ? "Image chat" : ""))).slice(0, 45) || "New Conversation";
-  const session = { id: currentSessionId, title, messages: conversation, updatedAt: Date.now() };
-  const i = savedSessions.findIndex(s => s.id === currentSessionId);
-  if (i >= 0) savedSessions[i] = session; else savedSessions.unshift(session);
-  savedSessions.sort((a, b) => b.updatedAt - a.updatedAt);
-  savedSessions = savedSessions.slice(0, 30);
-  persistSessions(); renderHistory();
-}
-function renderHistory() {
-  historyList.innerHTML = "";
-  if (!savedSessions.length) { historyList.textContent = "No saved conversations yet."; return; }
-  savedSessions.forEach(s => {
+function renderModes() {
+  modesEl.innerHTML = "";
+  PERSONA_LIST.forEach(p => {
     const b = document.createElement("button");
-    b.className = "history-item" + (s.id === currentSessionId ? " active" : "");
-    b.textContent = s.title || "Conversation";
-    b.onclick = () => loadSession(s.id);
-    historyList.appendChild(b);
-  });
-}
-function loadSession(id) {
-  if (isSending) return;
-  const s = savedSessions.find(x => x.id === id); if (!s) return;
-  currentSessionId = s.id;
-  conversation = (s.messages || []).map(m => ({ role: m.role, content: m.content, images: m.images }));
-  lastFull = [];
-  renderAll(); closePanels(); renderHistory();
-}
-function updateWelcome() {
-  const empty = conversation.length === 0;
-  document.getElementById("welcome").classList.toggle("hidden", !empty);
-  document.getElementById("suggestions").classList.toggle("hidden", !empty);
-}
-function togglePanel(id) {
-  const el = document.getElementById(id), was = el.classList.contains("open");
-  closePanels(); if (!was) el.classList.add("open");
-  if (id === "historyPanel") renderHistory();
-}
-function closePanels() { document.querySelectorAll(".panel").forEach(p => p.classList.remove("open")); }
-function clearChat() {
-  if (isSending) return;
-  saveCurrentSession();
-  conversation = []; currentSessionId = null; pending = []; lastFull = [];
-  renderPreviews(); input.value = ""; autoGrow(); renderAll(); closePanels(); renderHistory();
-}
-function clearAllHistory() {
-  if (isSending || !confirm("Delete all saved conversations?")) return;
-  savedSessions = []; persistSessions();
-  conversation = []; currentSessionId = null; renderAll(); renderHistory(); closePanels();
-}
-function suggest(text) { input.value = text; sendMessage(); }
-
-/* ---------- sending ---------- */
-function setSending(on) {
-  isSending = on;
-  sendBtn.textContent = on ? "■" : "↑";
-  sendBtn.title = on ? "Stop" : "Send";
-  document.getElementById("attach").disabled = on;
-}
-function onSendClick() { if (isSending) abortCtl && abortCtl.abort(); else sendMessage(); }
-
-function buildPayload(fullImages) {
-  return conversation.map((m, i) => {
-    const o = { role: m.role, content: m.content };
-    if (m.role === "user") {
-      const isLast = i === conversation.length - 1;
-      if (isLast && fullImages.length) o.images = fullImages;
-      else if (m.images && m.images.length) o.imageCount = m.images.length;
-    }
-    return o;
-  });
-}
-
-async function sendMessage() {
-  if (isSending) return;
-  const text = input.value.trim();
-  if (!text && !pending.length) return;
-
-  const thumbs = pending.map(p => p.thumb);
-  lastFull = pending.map(p => p.full);
-  const msg = { role: "user", content: text, images: thumbs.length ? thumbs : undefined };
-  conversation.push(msg);
-  pending = []; renderPreviews();
-  input.value = ""; autoGrow(); closePanels();
-  updateWelcome();
-  const userBox = buildMessage(msg); userBox.classList.add("enter"); chat.appendChild(userBox); scrollDown(true);
-  saveCurrentSession();
-  await streamReply();
-}
-
-async function regenerate() {
-  if (isSending) return;
-  if (conversation.length && conversation[conversation.length - 1].role === "assistant") conversation.pop();
-  if (!conversation.length || conversation[conversation.length - 1].role !== "user") return;
-  renderAll();
-  const last = conversation[conversation.length - 1];
-  if (!lastFull.length && last.images) lastFull = last.images; // fall back to saved thumbnails
-  await streamReply();
-}
-
-async function streamReply() {
-  setSending(true);
-  abortCtl = new AbortController();
-
-  const botMsg = { role: "assistant", content: "" };
-  const box = buildMessage(botMsg);
-  box.classList.add("enter");
-  box._content.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
-  chat.appendChild(box); scrollDown(true);
-
-  // Smooth typewriter: text arrives in bursts, but is revealed evenly,
-  // speeding up if it falls behind.
-  let acc = "", shown = 0, rafId = 0, drainResolve = null;
-  const tick = () => {
-    rafId = 0;
-    if (shown < acc.length) {
-      if (shown === 0) box._content.classList.add("fresh");
-      const lag = acc.length - shown;
-      shown = Math.min(acc.length, shown + Math.max(2, Math.ceil(lag / 10)));
-      const c = acc.charCodeAt(shown - 1);
-      if (c >= 0xD800 && c <= 0xDBFF && shown < acc.length) shown++; // don't split emoji
-      box._content.innerHTML = md(acc.slice(0, shown));
-      if (nearBottom()) scrollDown(false);
-    }
-    if (shown < acc.length) rafId = requestAnimationFrame(tick);
-    else if (drainResolve) { drainResolve(); drainResolve = null; }
-  };
-  const kick = () => { if (!rafId) rafId = requestAnimationFrame(tick); };
-  const drain = () => new Promise(r => { if (shown >= acc.length) return r(); drainResolve = r; kick(); });
-
-  try {
-    const response = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      signal: abortCtl.signal,
-      body: JSON.stringify({
-        messages: buildPayload(lastFull),
-        tone: toneEl.value,
-        mode: modeEl.value,
-        custom: customEl.value
-      })
-    });
-
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      throw new Error(data.error || "Server error: " + response.status);
-    }
-
-    const reader = response.body.getReader();
-    const dec = new TextDecoder();
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      acc += dec.decode(value, { stream: true });
-      kick();
-    }
-    acc += dec.decode();
-    if (!acc.trim()) throw new Error("AI returned an empty response.");
-    await drain();
-    botMsg.content = acc;
-    conversation.push(botMsg);
-    addActions(box, acc); refreshRegenButtons();
-    scrollDown(true);
-  } catch (error) {
-    if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
-    if (error.name === "AbortError") {
-      const partial = acc.slice(0, shown);
-      if (partial.trim()) {
-        box._content.innerHTML = md(partial);
-        botMsg.content = partial; conversation.push(botMsg);
-        addActions(box, partial); refreshRegenButtons();
-      } else box.remove();
-    } else {
-      box._content.textContent = "\u26a0\ufe0f " + error.message;
-      console.error("FlashMind error:", error);
-    }
-  } finally {
-    setSending(false); abortCtl = null;
-    saveCurrentSession(); input.focus();
-  }
-}
-
-/* ---------- input behaviour ---------- */
-function autoGrow() { input.style.height = "auto"; input.style.height = Math.min(input.scrollHeight, 160) + "px"; }
-input.addEventListener("input", autoGrow);
-input.addEventListener("keydown", e => {
-  if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); sendMessage(); }
-});
-
-/* ---------- spatial depth: parallax + tilt (mouse only) ---------- */
-(function () {
-  const fine = matchMedia("(hover:hover) and (pointer:fine)").matches;
-  const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (!fine || calm) return;
-  const root = document.documentElement;
-  let raf = 0, px = 0, py = 0;
-  document.addEventListener("pointermove", e => {
-    px = e.clientX / innerWidth * 2 - 1;
-    py = e.clientY / innerHeight * 2 - 1;
-    if (!raf) raf = requestAnimationFrame(() => {
-      raf = 0;
-      root.style.setProperty("--px", px.toFixed(3));
-      root.style.setProperty("--py", py.toFixed(3));
-    });
-    const el = e.target.closest && e.target.closest(".tilt");
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
-    const max = el.classList.contains("bot") ? 2.5 : 8;
-    el.style.setProperty("--rx", ((0.5 - y) * max).toFixed(2) + "deg");
-    el.style.setProperty("--ry", ((x - 0.5) * max).toFixed(2) + "deg");
-    el.style.setProperty("--mx", (x * 100).toFixed(1) + "%");
-    el.style.setProperty("--my", (y * 100).toFixed(1) + "%");
-  }, { passive: true });
-  document.addEventListener("pointerout", e => {
-    const el = e.target.closest && e.target.closest(".tilt");
-    if (el && !el.contains(e.relatedTarget)) {
-      el.style.setProperty("--rx", "0deg");
-      el.style.setProperty("--ry", "0deg");
-    }
-  });
-})();
-
-loadSettings(); renderHistory(); updateWelcome();
-</script>
-</body>
-</html>
+    const on = p.id === persona;
+    b.className = "mode-chip" + (on ? " active" : "");
+    b.setAttribute("role", "radio");
+    b.setAttribute("aria-checked", on ? "true" : "false");
+    b.textContent = p.icon + " " + p.label;
+    b.
