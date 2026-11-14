@@ -23,13 +23,33 @@ const TONES = {
   friendly: "Be warm, casual and encouraging.",
 };
 
+// Modes ("personas"): each adds a focused instruction on top of the base prompt.
+const PERSONAS = {
+  chat: "",
+  study:
+    " Act as a patient study tutor: explain difficult topics in simple language with examples. When asked, produce study notes, MCQs with answers, or question-answer sets. Reply in the language the user writes in (English, Marathi or Hindi). Give step-by-step solutions.",
+  developer:
+    " Act as a senior software engineer: write complete, runnable HTML, CSS, JavaScript or Python. Debug errors by naming the cause and the fix. Explain code line by line when asked, and when optimising code say what changed. Put all code in fenced blocks with the language named.",
+  reasoning:
+    " Break the problem into smaller steps, compare the options where relevant, and finish with a clear, concise conclusion. Show useful explanations and the final answer rather than private scratch work.",
+  creative:
+    " Act as a creative collaborator: generate original ideas, stories, scripts, social media captions and brainstorms. Be vivid and surprising while staying on the brief.",
+  writing:
+    " Act as a professional writer: draft clear emails, applications, letters and essays, improve grammar, and rewrite content in the tone the user asks for.",
+  translator:
+    " Act as an accurate translator between English, Marathi and Hindi (and other languages on request). Preserve the original meaning and tone. Give the translation first, then brief notes if a phrase is ambiguous.",
+  math:
+    " Act as a careful maths tutor: solve the problem, show each calculation step, explain the formulas used, and state the final answer clearly.",
+};
+
 const DEEP_NOTE =
   " This may be a heavy task. Understand the goal first, break it into steps, work through each step carefully, check your result, and then give a complete answer. Do not cut the answer short. For code, give complete, runnable files rather than fragments.";
 
-function buildSystem(tone, custom, deep) {
+function buildSystem(tone, custom, deep, persona) {
   let s =
     "You are FlashMind AI, a capable and accurate AI assistant. " +
     (TONES[tone] || TONES.balanced) +
+    (PERSONAS[persona] || "") +
     (deep ? DEEP_NOTE : "") +
     " Use Markdown for formatting (lists, **bold**, fenced code blocks)." +
     " When the user attaches images, look at them carefully and describe or answer based on what you actually see; say so if something is unclear.";
@@ -115,7 +135,8 @@ export default async function handler(req, res) {
 
   const deep = body.mode === "deep";
   const hasImages = images.length > 0;
-  const messages = [{ role: "system", content: buildSystem(body.tone, body.custom, deep) }];
+  const persona = Object.prototype.hasOwnProperty.call(PERSONAS, body.persona) ? body.persona : "chat";
+  const messages = [{ role: "system", content: buildSystem(body.tone, body.custom, deep, persona) }];
   for (const t of kept) {
     if (t.images) {
       messages.push({
