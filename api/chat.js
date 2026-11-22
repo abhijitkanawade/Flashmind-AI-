@@ -4,13 +4,13 @@
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const TEXT_MODEL = process.env.GROQ_TEXT_MODEL || "openai/gpt-oss-120b";
-const VISION_MODEL =
-  process.env.GROQ_VISION_MODEL || "meta-llama/llama-4-scout-17b-16e-instruct";
+// Qwen 3.6 27B and Llama 4 Scout were retired by Groq; Qwen 3.8 27B handles image input.
+const VISION_MODEL = process.env.GROQ_VISION_MODEL || "qwen/qwen3.8-27b";
 
 const MAX_HISTORY_MESSAGES = 40;   // turns kept from the client
 const MAX_TEXT = 40000;            // characters per message
 const CONTEXT_BUDGET = 150000;     // characters of history sent upstream (oldest dropped first)
-const MAX_IMAGES = 4;
+const MAX_IMAGES = 3;              // Groq vision models accept at most 3 images per request
 const MAX_IMAGE_CHARS = 3_000_000; // ~2.2MB of image data per image
 const IMAGE_RE = /^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+$/;
 
@@ -157,6 +157,16 @@ export default async function handler(req, res) {
     if (!res.writableEnded) ac.abort();
   });
 
+  const payload = {
+    model: hasImages ? VISION_MODEL : TEXT_MODEL,
+    messages,
+    temperature: deep ? 0.4 : 0.7,
+    max_tokens: deep ? MAX_TOKENS.deep : MAX_TOKENS.normal,
+    stream: true,
+  };
+  // Qwen is a thinking model: return only the final answer, not its reasoning.
+  if (hasImages) payload.reasoning_format = "hidden";
+
   let upstream;
   try {
     upstream = await fetch(GROQ_URL, {
@@ -166,13 +176,7 @@ export default async function handler(req, res) {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        model: hasImages ? VISION_MODEL : TEXT_MODEL,
-        messages,
-        temperature: deep ? 0.4 : 0.7,
-        max_tokens: deep ? MAX_TOKENS.deep : MAX_TOKENS.normal,
-        stream: true,
-      }),
+      body: JSON.stringify(payload),
     });
   } catch (e) {
     if (ac.signal.aborted) return;
